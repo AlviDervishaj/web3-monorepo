@@ -53,9 +53,14 @@ export function useCreateCampaign() {
       goal: bigint;
       durationInDays: number;
     }) => {
+      // Type guard: Ensure walletClient is available (idempotent check)
       if (!walletClient) {
-        throw new Error("Connect a wallet to create a campaign.");
+        throw new Error(
+          "Wallet client is not ready. Please ensure your wallet is connected and try again."
+        );
       }
+
+      // Type guard: Ensure publicClient is available (idempotent check)
       if (!publicClient) {
         // Check if RPC URL might be missing
         const rpcUrl = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL;
@@ -65,24 +70,32 @@ export function useCreateCampaign() {
           );
         }
         throw new Error(
-          "Public client is not ready yet. Please check your network connection."
+          "Network connection is not ready. Please check your network connection and try again."
         );
       }
+
+      // Type guard: Ensure factoryAddress is configured (idempotent check)
       if (!factoryAddress) {
         throw new Error(
-          "Factory address is not configured. Please check your network settings."
+          "Factory address is not configured for this network. Please check your network settings."
         );
       }
 
-      // Verify we're on the correct network
-      if (walletClient.chain?.id !== chainId) {
+      // Verify we're on the correct network (idempotent check)
+      const walletChainId = walletClient.chain?.id;
+      if (walletChainId !== chainId) {
         throw new Error(
-          `Please switch to the correct network. Expected chain ID: ${chainId}, but connected to: ${walletClient.chain?.id}`
+          `Network mismatch: Please switch to the correct network. Expected chain ID: ${chainId}, but wallet is connected to: ${
+            walletChainId ?? "unknown"
+          }`
         );
       }
 
+      // Idempotency check: Prevent duplicate transactions
       if (hasPendingTransaction("create")) {
-        throw new Error("A campaign creation transaction is already pending");
+        throw new Error(
+          "A campaign creation transaction is already pending. Please wait for it to complete."
+        );
       }
 
       // Check if factory is paused before attempting transaction
