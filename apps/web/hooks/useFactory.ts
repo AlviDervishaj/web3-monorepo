@@ -10,10 +10,7 @@ import {
   getContractAddress,
   type Network,
 } from "@shungerfund/shared/contracts/addresses";
-import type {
-  Campaign,
-  PendingTransaction,
-} from "@shungerfund/shared/types";
+import type { Campaign, PendingTransaction } from "@shungerfund/shared/types";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
@@ -28,10 +25,12 @@ const useFactoryConfig = () => {
   const network = getNetwork(chainId);
   const factoryAddress = useMemo(
     () => getContractAddress(network, "factory"),
-    [network],
+    [network]
   );
   const isConfigured =
-    factoryAddress && factoryAddress !== ZERO_ADDRESS ? factoryAddress : undefined;
+    factoryAddress && factoryAddress !== ZERO_ADDRESS
+      ? factoryAddress
+      : undefined;
   return { chainId, network, factoryAddress: isConfigured };
 };
 
@@ -58,28 +57,96 @@ export function useCreateCampaign() {
         throw new Error("Connect a wallet to create a campaign.");
       }
       if (!publicClient) {
-        throw new Error("Public client is not ready yet.");
+        // Check if RPC URL might be missing
+        const rpcUrl = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL;
+        if (chainId === 11155111 && !rpcUrl) {
+          throw new Error(
+            "Sepolia RPC URL is not configured. Please set NEXT_PUBLIC_SEPOLIA_RPC_URL environment variable."
+          );
+        }
+        throw new Error(
+          "Public client is not ready yet. Please check your network connection."
+        );
       }
       if (!factoryAddress) {
-        throw new Error("Factory address is not configured");
+        throw new Error(
+          "Factory address is not configured. Please check your network settings."
+        );
       }
-    if (hasPendingTransaction("create")) {
-      throw new Error("A campaign creation transaction is already pending");
-    }
 
-      const txHash = await walletClient.writeContract({
-      address: factoryAddress,
-      abi: crowdfundingFactoryAbi,
-      functionName: "createCampaign",
-        args: [
-          vars.name,
-          vars.description,
-          vars.goal,
-          BigInt(vars.durationInDays),
-        ],
-        chain: walletClient.chain ?? undefined,
-        account: walletClient.account ?? null,
-      });
+      // Verify we're on the correct network
+      if (walletClient.chain?.id !== chainId) {
+        throw new Error(
+          `Please switch to the correct network. Expected chain ID: ${chainId}, but connected to: ${walletClient.chain?.id}`
+        );
+      }
+
+      if (hasPendingTransaction("create")) {
+        throw new Error("A campaign creation transaction is already pending");
+      }
+
+      // Check if factory is paused before attempting transaction
+      try {
+        const isPaused = await publicClient.readContract({
+          address: factoryAddress,
+          abi: crowdfundingFactoryAbi,
+          functionName: "paused",
+        });
+        if (isPaused) {
+          throw new Error(
+            "The factory is currently paused. Campaign creation is temporarily disabled."
+          );
+        }
+      } catch (error) {
+        // If we can't read the paused status, it might be an RPC issue
+        if (error instanceof Error && !error.message.includes("paused")) {
+          throw new Error(
+            `Unable to connect to the network. Please check your RPC configuration: ${error.message}`
+          );
+        }
+        throw error;
+      }
+
+      let txHash: `0x${string}`;
+      try {
+        txHash = await walletClient.writeContract({
+          address: factoryAddress,
+          abi: crowdfundingFactoryAbi,
+          functionName: "createCampaign",
+          args: [
+            vars.name,
+            vars.description,
+            vars.goal,
+            BigInt(vars.durationInDays),
+          ],
+          chain: walletClient.chain ?? undefined,
+          account: walletClient.account ?? null,
+        });
+      } catch (error: unknown) {
+        // Extract more detailed error information
+        let errorMessage = "Failed to create campaign";
+        if (error instanceof Error) {
+          errorMessage = error.message;
+          // Check for common error patterns
+          if (error.message.includes("user rejected")) {
+            errorMessage = "Transaction was rejected. Please try again.";
+          } else if (error.message.includes("insufficient funds")) {
+            errorMessage =
+              "Insufficient funds for gas. Please add more ETH to your wallet.";
+          } else if (error.message.includes("Factory is paused")) {
+            errorMessage =
+              "The factory is currently paused. Please try again later.";
+          } else if (
+            error.message.includes("network") ||
+            error.message.includes("chain")
+          ) {
+            errorMessage = `Network error: ${error.message}. Please check your network connection and ensure you're on Sepolia testnet.`;
+          } else if (error.message.includes("revert")) {
+            errorMessage = `Transaction reverted: ${error.message}`;
+          }
+        }
+        throw new Error(errorMessage);
+      }
 
       setHash(txHash);
       addPendingTransaction({
@@ -112,7 +179,7 @@ export function useCreateCampaign() {
     name: string,
     description: string,
     goal: bigint,
-    durationInDays: number,
+    durationInDays: number
   ) => mutation.mutate({ name, description, goal, durationInDays });
 
   return {
@@ -124,8 +191,8 @@ export function useCreateCampaign() {
       mutation.error instanceof Error
         ? mutation.error
         : mutation.error
-          ? new Error(String(mutation.error))
-          : undefined,
+        ? new Error(String(mutation.error))
+        : undefined,
     status: mutation.status,
   };
 }
@@ -142,9 +209,9 @@ export function useAllCampaigns() {
         throw new Error("Factory not ready");
       }
       const campaigns = await publicClient.readContract({
-    address: factoryAddress,
-    abi: crowdfundingFactoryAbi,
-    functionName: "getAllCampaigns",
+        address: factoryAddress,
+        abi: crowdfundingFactoryAbi,
+        functionName: "getAllCampaigns",
       });
       return campaigns as Campaign[];
     },
@@ -170,9 +237,9 @@ export function useUserCampaigns(userAddress?: Address) {
         throw new Error("Factory not ready");
       }
       const campaigns = await publicClient.readContract({
-    address: factoryAddress,
-    abi: crowdfundingFactoryAbi,
-    functionName: "getUserCampaigns",
+        address: factoryAddress,
+        abi: crowdfundingFactoryAbi,
+        functionName: "getUserCampaigns",
         args: [userAddress],
       });
       return campaigns as Campaign[];
@@ -200,14 +267,14 @@ export function useFactoryHealth() {
       }
       const [paused, owner] = await Promise.all([
         publicClient.readContract({
-    address: factoryAddress,
-    abi: crowdfundingFactoryAbi,
-    functionName: "paused",
+          address: factoryAddress,
+          abi: crowdfundingFactoryAbi,
+          functionName: "paused",
         }),
         publicClient.readContract({
-    address: factoryAddress,
-    abi: crowdfundingFactoryAbi,
-    functionName: "owner",
+          address: factoryAddress,
+          abi: crowdfundingFactoryAbi,
+          functionName: "owner",
         }),
       ]);
       return {
@@ -238,9 +305,9 @@ export function useCampaignGovernance(campaignAddress?: Address) {
         throw new Error("Factory not ready");
       }
       const governance = (await publicClient.readContract({
-    address: factoryAddress,
-    abi: crowdfundingFactoryAbi,
-    functionName: "getCampaignGovernance",
+        address: factoryAddress,
+        abi: crowdfundingFactoryAbi,
+        functionName: "getCampaignGovernance",
         args: [campaignAddress],
       })) as [boolean, boolean, bigint];
       return governance;
@@ -303,7 +370,10 @@ export function useFactoryAdminActions(campaignAddress?: Address) {
         throw new Error("Another admin action is already pending");
       }
 
-      let functionName: "setCampaignPause" | "setCampaignUnderReview" | "approveCampaignWithdrawal";
+      let functionName:
+        | "setCampaignPause"
+        | "setCampaignUnderReview"
+        | "approveCampaignWithdrawal";
       let args: readonly unknown[] = [];
 
       if (vars.action === "pause") {
@@ -346,7 +416,8 @@ export function useFactoryAdminActions(campaignAddress?: Address) {
       }
       const key = factoryKeys.governance(factoryAddress, campaignAddress);
       await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<[boolean, boolean, bigint]>(key);
+      const previous =
+        queryClient.getQueryData<[boolean, boolean, bigint]>(key);
       if (!previous) return { previous };
 
       let next: [boolean, boolean, bigint] = [...previous];
@@ -358,14 +429,16 @@ export function useFactoryAdminActions(campaignAddress?: Address) {
         next = [...previous] as [boolean, boolean, bigint];
       }
       queryClient.setQueryData(key, next);
-      queryClient.invalidateQueries({ queryKey: campaignKeys.data(campaignAddress) });
+      queryClient.invalidateQueries({
+        queryKey: campaignKeys.data(campaignAddress),
+      });
       return { previous };
     },
     onError: (_error, _vars, context) => {
       if (!context?.previous || !factoryAddress || !campaignAddress) return;
       queryClient.setQueryData(
         factoryKeys.governance(factoryAddress, campaignAddress),
-        context.previous,
+        context.previous
       );
     },
     onSuccess: () => {
@@ -416,7 +489,7 @@ export function useFactoryAdminActions(campaignAddress?: Address) {
       mutation.error instanceof Error
         ? mutation.error
         : mutation.error
-          ? new Error(String(mutation.error))
-          : undefined,
+        ? new Error(String(mutation.error))
+        : undefined,
   };
 }

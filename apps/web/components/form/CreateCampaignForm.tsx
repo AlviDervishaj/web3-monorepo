@@ -19,10 +19,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateCampaign } from '@/hooks/useFactory';
 import { toast } from 'sonner';
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 
 export function CreateCampaignForm() {
   const { address } = useAccount();
+  const chainId = useChainId();
   const { createCampaign, isPending, isSuccess, error, hash, status } = useCreateCampaign();
 
   const form = useForm<CreateCampaignInput>({
@@ -38,6 +39,15 @@ export function CreateCampaignForm() {
   const onSubmit = (data: CreateCampaignInput) => {
     if (!address) {
       toast.error('Please connect your wallet');
+      return;
+    }
+
+    // Check if user is on the correct network
+    if (chainId !== 11155111) {
+      toast.error('Please switch to Sepolia testnet in MetaMask', {
+        duration: 6000,
+        description: `Current network: ${chainId}, Expected: 11155111`,
+      });
       return;
     }
 
@@ -72,8 +82,16 @@ export function CreateCampaignForm() {
   useEffect(() => {
     if (error) {
       const errorMessage = error.message || 'Transaction failed';
-      toast.error(errorMessage);
-      console.error('Campaign creation error:', { error, status, hash });
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
+      console.error('Campaign creation error:', { 
+        error, 
+        status, 
+        hash,
+        message: error.message,
+        stack: error.stack,
+      });
     }
   }, [error, status, hash]);
 

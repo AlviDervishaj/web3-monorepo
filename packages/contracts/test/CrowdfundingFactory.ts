@@ -11,7 +11,7 @@ describe("CrowdfundingFactory governance", async () => {
       "CrowdfundingFactory",
       [],
       {
-        account: factoryOwner.account,
+      account: factoryOwner.account,
       },
     );
 

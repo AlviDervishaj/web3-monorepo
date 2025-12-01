@@ -44,11 +44,11 @@ export function Header() {
       return;
     }
 
-    try {
+          try {
       await connect({ connector: preferredConnector });
-    } catch (error) {
-      console.error('Connection error:', error);
-    }
+      } catch (error) {
+        console.error('Connection error:', error);
+      }
   };
 
   const handleNetworkChange = (value: string) => {
@@ -124,13 +124,13 @@ export function Header() {
                   onClick={handleConnect}
                   disabled={isConnecting || !preferredConnector}
                 >
-                  <Wallet className="h-4 w-4 mr-2" />
+                <Wallet className="h-4 w-4 mr-2" />
                   {isConnecting
                     ? 'Connecting...'
                     : isMockConnector
                       ? 'Connect Mock Wallet'
                       : 'Connect Wallet'}
-                </Button>
+              </Button>
                 {!isMockConnector && preferredConnector && !isConnectorReady && (
                   <button
                     type="button"
