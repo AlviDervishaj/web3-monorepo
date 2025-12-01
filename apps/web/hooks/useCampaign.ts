@@ -46,7 +46,7 @@ const ensureAddress = (address?: Address): Address => {
 export function useCampaignData(campaignAddress?: Address) {
   const { publicClient } = useClients();
 
-  const query = useQuery({
+  const query = useQuery<CampaignData, Error, CampaignData>({
     queryKey: campaignKeys.data(campaignAddress),
     enabled: Boolean(campaignAddress && publicClient),
     queryFn: async () => {
@@ -68,7 +68,7 @@ export function useCampaignData(campaignAddress?: Address) {
         withdrawalApproved,
         withdrawalDelay,
         balance,
-      ] = await Promise.all([
+      ] = (await Promise.all([
         publicClient.readContract({
           address: campaignAddress,
           abi: crowdfundingAbi,
@@ -130,7 +130,21 @@ export function useCampaignData(campaignAddress?: Address) {
           functionName: "WITHDRAWAL_DELAY",
         }),
         publicClient.getBalance({ address: campaignAddress }),
-      ]);
+      ])) as [
+        string,
+        string,
+        bigint,
+        bigint,
+        Address,
+        boolean,
+        boolean,
+        bigint,
+        Tier[],
+        bigint,
+        boolean,
+        bigint,
+        bigint
+      ];
 
       return {
         name,
@@ -139,12 +153,12 @@ export function useCampaignData(campaignAddress?: Address) {
         deadline,
         owner,
         paused: Boolean(paused),
-        underReview: Boolean(underReview),
+        underReview,
         state: Number(state) as CampaignState,
         tiers: tiers as Tier[],
         balance,
         withdrawalRequestTime,
-        withdrawalApproved: Boolean(withdrawalApproved),
+        withdrawalApproved,
         withdrawalDelay,
       } satisfies CampaignData;
     },

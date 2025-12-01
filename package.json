@@ -15,5 +15,8 @@
     "contracts:deploy": "pnpm --filter @shungerfund/contracts run deploy",
     "start:frontend": "pnpm --filter @shungerfund/web start",
     "start:backend": "pnpm --filter @shungerfund/contracts hardhat:node"
+  },
+  "devDependencies": {
+    "next": "16.0.3"
   }
 }
