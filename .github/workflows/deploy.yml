@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  PNPM_HOME: ~/.local/share/pnpm
+  NETWORK: sepolia
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint web app
+        run: pnpm web:lint
+
+      - name: Test contracts
+        run: pnpm contracts:test
+
+      - name: Check contract health
+        env:
+          RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          NEXT_PUBLIC_FACTORY_ADDRESS: ${{ secrets.NEXT_PUBLIC_FACTORY_ADDRESS }}
+          NEXT_PUBLIC_SEPOLIA_RPC_URL: ${{ secrets.NEXT_PUBLIC_SEPOLIA_RPC_URL }}
+        run: pnpm contracts:check
+
+      - name: Build web
+        env:
+          NEXT_PUBLIC_SEPOLIA_RPC_URL: ${{ secrets.NEXT_PUBLIC_SEPOLIA_RPC_URL }}
+          NEXT_PUBLIC_FACTORY_ADDRESS: ${{ secrets.NEXT_PUBLIC_FACTORY_ADDRESS }}
+          NEXT_PUBLIC_CHAIN_ID: 11155111
+        run: pnpm web:build
+

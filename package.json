@@ -1,0 +1,19 @@
+{
+  "name": "shungerfund",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.18.2",
+  "type": "module",
+  "scripts": {
+    "web:dev": "pnpm --filter @shungerfund/web dev",
+    "web:build": "pnpm --filter @shungerfund/web build",
+    "web:lint": "pnpm --filter @shungerfund/web lint",
+    "contracts:compile": "pnpm --filter @shungerfund/contracts compile",
+    "contracts:build": "pnpm --filter @shungerfund/contracts build",
+    "contracts:test": "pnpm --filter @shungerfund/contracts test",
+    "contracts:check": "pnpm --filter @shungerfund/contracts run check",
+    "contracts:deploy": "pnpm --filter @shungerfund/contracts run deploy",
+    "start:frontend": "pnpm --filter @shungerfund/web start",
+    "start:backend": "pnpm --filter @shungerfund/contracts hardhat:node"
+  }
+}
