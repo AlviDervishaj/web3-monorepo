@@ -1,4 +1,4 @@
-import { mock } from "@wagmi/connectors";
+import { injected, mock } from "@wagmi/connectors";
 import { createConfig, http, type Config } from "wagmi";
 import { localhost, sepolia } from "wagmi/chains";
 
@@ -20,6 +20,11 @@ export const localhostChain = {
   },
 } as const;
 
+const TARGET_CHAIN_ID = Number(
+  process.env.NEXT_PUBLIC_CHAIN_ID ?? localhostChain.id.toString()
+);
+export const shouldUseMockConnector = TARGET_CHAIN_ID === localhostChain.id;
+
 export type CreateShungerFundConfigOptions = {
   storage?: Config["storage"];
   sepoliaRpcUrl?: string;
@@ -31,12 +36,19 @@ export const createShungerFundConfig = ({
 }: CreateShungerFundConfigOptions = {}) =>
   createConfig({
     chains: [localhostChain, sepolia],
-    connectors: [
-      mock({
-        accounts: [MOCK_ACCOUNT],
-        features: { reconnect: true },
-      }),
-    ],
+    connectors: shouldUseMockConnector
+      ? [
+          mock({
+            accounts: [MOCK_ACCOUNT],
+            features: { reconnect: true },
+          }),
+        ]
+      : [
+          injected({
+            shimDisconnect: true,
+            target: "metaMask",
+          }),
+        ],
     transports: {
       [localhostChain.id]: http(),
       [sepolia.id]: http(sepoliaRpcUrl),

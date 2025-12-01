@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { ThemeToggle } from './ThemeToggle';
 import { isAdmin } from '@shungerfund/shared/admin';
+import { shouldUseMockConnector } from '@shungerfund/shared/wallet/config';
 
 export function Header() {
   const { address, isConnected } = useAccount();
@@ -30,14 +31,23 @@ export function Header() {
   const config = useConfig();
   const availableChains = config?.chains ?? [];
   const userIsAdmin = isAdmin(address);
+  const preferredConnector = connectors[0];
+  const isMockConnector =
+    preferredConnector?.id === 'mock' || shouldUseMockConnector;
+  const isConnectorReady = preferredConnector?.ready ?? true;
 
   const handleConnect = async () => {
-    if (connectors[0] && !isConnecting) {
-      try {
-        await connect({ connector: connectors[0] });
-      } catch (error) {
-        console.error('Connection error:', error);
-      }
+    if (!preferredConnector || isConnecting) return;
+
+    if (!isMockConnector && !isConnectorReady) {
+      window.open('https://metamask.io/download/', '_blank', 'noopener');
+      return;
+    }
+
+    try {
+      await connect({ connector: preferredConnector });
+    } catch (error) {
+      console.error('Connection error:', error);
     }
   };
 
@@ -109,15 +119,39 @@ export function Header() {
                 </Button>
               </div>
             ) : (
-              <Button onClick={handleConnect} disabled={isConnecting}>
-                <Wallet className="h-4 w-4 mr-2" />
-                {isConnecting ? 'Connect Wallet' : 'Connect Mock Wallet'}
-              </Button>
+              <div className="flex flex-col gap-1">
+                <Button
+                  onClick={handleConnect}
+                  disabled={isConnecting || !preferredConnector}
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  {isConnecting
+                    ? 'Connecting...'
+                    : isMockConnector
+                      ? 'Connect Mock Wallet'
+                      : 'Connect Wallet'}
+                </Button>
+                {!isMockConnector && preferredConnector && !isConnectorReady && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        'https://metamask.io/download/',
+                        '_blank',
+                        'noopener'
+                      )
+                    }
+                    className="text-xs text-red-500 underline text-left"
+                  >
+                    Install MetaMask to connect
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </nav>
       </div>
     </header>
+
   );
 }
-
