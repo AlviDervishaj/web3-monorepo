@@ -1,6 +1,13 @@
 'use client';
 
-import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi';
+import {
+  useAccount,
+  useConnect,
+  useDisconnect,
+  useChainId,
+  useSwitchChain,
+  useConfig,
+} from 'wagmi';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Wallet, LogOut, Network } from 'lucide-react';
@@ -11,8 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useEffect } from 'react';
-
 import { ThemeToggle } from './ThemeToggle';
 import { isAdmin } from '@shungerfund/shared/admin';
 
@@ -22,41 +27,19 @@ export function Header() {
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
+  const config = useConfig();
+  const availableChains = config?.chains ?? [];
   const userIsAdmin = isAdmin(address);
 
   const handleConnect = async () => {
     if (connectors[0] && !isConnecting) {
       try {
-        // Connect to mock wallet
         await connect({ connector: connectors[0] });
-        
-        // After connection, ensure we're on localhost
-        if (chainId !== 31337) {
-          try {
-            await switchChain({ chainId: 31337 });
-          } catch (switchError) {
-            console.error('Switch chain error:', switchError);
-          }
-        }
       } catch (error) {
         console.error('Connection error:', error);
       }
     }
   };
-
-  // Automatically switch to localhost when connected
-  useEffect(() => {
-    if (isConnected && chainId !== 31337) {
-      const switchToLocalhost = async () => {
-        try {
-          await switchChain({ chainId: 31337 });
-        } catch (error) {
-          console.error('Failed to switch to localhost:', error);
-        }
-      };
-      switchToLocalhost();
-    }
-  }, [isConnected, chainId, switchChain]);
 
   const handleNetworkChange = (value: string) => {
     const targetChainId = parseInt(value);
@@ -97,14 +80,21 @@ export function Header() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Select value={chainId.toString()} onValueChange={handleNetworkChange}>
+            <Select
+              value={chainId?.toString()}
+              onValueChange={handleNetworkChange}
+              disabled={!availableChains.length}
+            >
               <SelectTrigger className="w-[140px]">
                 <Network className="h-4 w-4 mr-2" />
-                <SelectValue />
+                <SelectValue placeholder="Select Network" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="31337">Localhost</SelectItem>
-                <SelectItem value="11155111">Sepolia</SelectItem>
+                {availableChains.map((chain) => (
+                  <SelectItem key={chain.id} value={chain.id.toString()}>
+                    {chain.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
