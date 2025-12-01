@@ -1,8 +1,7 @@
 {
   "network": "sepolia",
-  "factoryAddress": "0x0000000000000000000000000000000000000000",
-  "deployer": "",
-  "transactionHash": "",
-  "timestamp": ""
+  "factoryAddress": "0xf9c8dc1b2312d4eeea441f0df35758e019108bce",
+  "deployer": "0xE58E3b30ab87147D6a70A3261D41b88c7D0F4EF4",
+  "transactionHash": "0x710d02ec83b70433b58826abf9837ea56589ea94feea14ec2b87a7ec30a86d32",
+  "timestamp": "2025-12-01T13:02:38.372Z"
 }
-
